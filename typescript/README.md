@@ -20,13 +20,13 @@ This is the TypeScript/Node.js implementation of VibeCoding Logger, designed to 
 ### Installation
 
 ```bash
-npm install vibe-logger
+npm install vibelogger
 ```
 
 ### Basic Usage
 
 ```typescript
-import { createFileLogger } from 'vibe-logger';
+import { createFileLogger } from 'vibelogger';
 
 // Create logger with auto-save to timestamped file
 const logger = createFileLogger('my-project');
@@ -62,7 +62,7 @@ console.log(aiContext); // Send this to your LLM
 ### Creating Loggers
 
 ```typescript
-import { createLogger, createFileLogger, createEnvLogger } from 'vibe-logger';
+import { createLogger, createFileLogger, createEnvLogger } from 'vibelogger';
 
 // Basic logger
 const logger = createLogger({
@@ -108,7 +108,7 @@ interface LogOptions {
 ### Object Configuration
 
 ```typescript
-import { createLogger, type VibeLoggerConfig } from 'vibe-logger';
+import { createLogger, type VibeLoggerConfig } from 'vibelogger';
 
 const config: VibeLoggerConfig = {
   correlationId: 'custom-correlation-id',

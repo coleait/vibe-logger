@@ -1,5 +1,5 @@
 {
-  "name": "vibe-logger",
+  "name": "vibelogger",
   "version": "0.1.0",
   "description": "AI-Native Logging for LLM Agent Development - TypeScript/Node.js Implementation",
   "main": "dist/index.js",

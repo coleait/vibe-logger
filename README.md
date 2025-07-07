@@ -25,23 +25,30 @@ In VibeCoding (AI-driven development), the quality of debugging depends on how m
 | Language | Status | Package | Documentation |
 |----------|--------|---------|---------------|
 | **Python** | ✅ **Stable** | `pip install vibelogger` | [Python Docs](python/README.md) |
-| **TypeScript/Node.js** | 🚧 **Need Contributors** | Coming Soon | [Contribute!](typescript/README.md) |
+| **TypeScript/Node.js** | ✅ **Stable** | `npm install vibelogger` | [TypeScript Docs](typescript/README.md) |
 | **Go** | 📋 **Planned** | - | - |
 | **Rust** | 📋 **Planned** | - | - |
 
-## 🚀 Quick Start (Python)
+## 🚀 Quick Start
 
 ### Installation
 
+**Python:**
 ```bash
 pip install vibelogger
 ```
 
+**TypeScript/Node.js:**
+```bash
+npm install vibelogger
+```
+
 ### Vibe Usage
-Just ask Claude Code or Google CLI to use this.
+Just ask Claude Code or other AI assistants to use this library.
 
 ### Basic Usage
 
+**Python:**
 ```python
 from vibelogger import create_file_logger
 
@@ -56,23 +63,36 @@ logger.info(
     human_note="AI-TODO: Check if user exists before fetching profile"
 )
 
-# Log exceptions with full context
-try:
-    result = risky_operation()
-except Exception as e:
-    logger.log_exception(
-        operation="fetchUserProfile",
-        exception=e,
-        context={"user_id": "123"},
-        ai_todo="Suggest proper error handling for this case"
-    )
-
 # Get logs formatted for AI analysis
 ai_context = logger.get_logs_for_ai()
 print(ai_context)  # Send this to your LLM for analysis
 ```
 
-For complete Python documentation, see [python/README.md](python/README.md).
+**TypeScript/Node.js:**
+```typescript
+import { createFileLogger } from 'vibelogger';
+
+// Create logger with auto-save to timestamped file
+const logger = createFileLogger("my_project");
+
+// Log with rich context for AI analysis
+await logger.info(
+    "fetchUserProfile",
+    "Starting user profile fetch",
+    {
+        context: { user_id: "123", source: "api_endpoint" },
+        human_note: "AI-TODO: Check if user exists before fetching profile"
+    }
+);
+
+// Get logs formatted for AI analysis
+const aiContext = logger.getLogsForAI();
+console.log(aiContext); // Send this to your LLM for analysis
+```
+
+For complete documentation:
+- **Python**: [python/README.md](python/README.md)
+- **TypeScript**: [typescript/README.md](typescript/README.md)
 
 ## 📋 Advanced Usage
 

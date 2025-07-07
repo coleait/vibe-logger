@@ -316,7 +316,7 @@ typescript/src/
 
 ```typescript
 // Main logger creation
-import { createFileLogger, createLogger, VibeLoggerConfig } from 'vibe-logger';
+import { createFileLogger, createLogger, VibeLoggerConfig } from 'vibelogger';
 
 // Simple usage (matches Python)
 const logger = createFileLogger('my-project');

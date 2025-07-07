@@ -73,9 +73,41 @@ export class VibeLogger {
 
     // Ensure log directory exists if auto-save is enabled
     if (this.config.autoSave && this.config.createDirs) {
-      FileSystemManager.ensureDirectory(this.config.logFile).catch(error => {
-        console.error('Failed to create log directory:', error);
+      FileSystemManager.ensureDirectory(this.config.logFile).then(success => {
+        if (!success) {
+          // If directory creation fails, disable auto-save to prevent crashes
+          this.config.autoSave = false;
+        }
+      }).catch(error => {
+        // Fallback: disable auto-save on any error
+        this.config.autoSave = false;
       });
+    }
+  }
+
+  /**
+   * Safe JSON.stringify with circular reference handling
+   */
+  private safeStringify(obj: any, indent?: number): string {
+    const seen = new WeakSet();
+    
+    try {
+      return JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value)) {
+            return '[Circular Reference]';
+          }
+          seen.add(value);
+        }
+        return value;
+      }, indent);
+    } catch (error) {
+      // Fallback for any other JSON serialization errors
+      return JSON.stringify({
+        error: 'Failed to serialize log entry',
+        originalError: String(error),
+        timestamp: new Date().toISOString()
+      }, null, indent);
     }
   }
 
@@ -209,8 +241,8 @@ export class VibeLogger {
         this.config.maxFileSizeMb
       );
 
-      // Append log entry
-      const jsonLine = JSON.stringify(entry, null, 0) + '\n';
+      // Append log entry with circular reference handling
+      const jsonLine = this.safeStringify(entry) + '\n';
       await FileSystemManager.appendToFile(this.config.logFile, jsonLine);
     } catch (error) {
       // Log file errors shouldn't crash the application
@@ -323,7 +355,8 @@ export class VibeLogger {
       );
     }
 
-    return JSON.stringify(logsToReturn, null, 2);
+    // Return as compact JSON array for better parsing
+    return this.safeStringify(logsToReturn);
   }
 
   /**
@@ -363,11 +396,14 @@ export class VibeLogger {
     await this.memoryMutex; // Wait for pending operations
 
     if (this.config.createDirs) {
-      await FileSystemManager.ensureDirectory(targetFile);
+      const dirSuccess = await FileSystemManager.ensureDirectory(targetFile);
+      if (!dirSuccess) {
+        throw new Error('Cannot create directory for log file - insufficient permissions or disk space');
+      }
     }
 
     const content = this.logs
-      .map(log => JSON.stringify(log, null, 0))
+      .map(log => this.safeStringify(log))
       .join('\n') + '\n';
 
     const result = await FileSystemManager.writeFile(targetFile, content);

@@ -17,16 +17,24 @@ export class FileSystemManager {
 
   /**
    * Ensure directory exists, creating it if necessary
+   * Returns true if directory is accessible, false if not
    */
-  static async ensureDirectory(filePath: string): Promise<void> {
+  static async ensureDirectory(filePath: string): Promise<boolean> {
     try {
       const dir = dirname(resolve(filePath));
       await fs.mkdir(dir, { recursive: true });
+      return true;
     } catch (error) {
-      // If error is not "already exists", throw it
-      if ((error as any).code !== 'EEXIST') {
-        throw error;
+      // Handle all directory creation failures gracefully
+      // This includes: permission denied, read-only filesystem, disk full, etc.
+      const errorCode = (error as any).code;
+      if (errorCode === 'EEXIST') {
+        return true; // Directory already exists
       }
+      
+      // All other errors (EACCES, EROFS, ENOSPC, ENAMETOOLONG, etc.)
+      // should not crash the logger - return false to disable file logging
+      return false;
     }
   }
 

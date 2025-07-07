@@ -167,7 +167,12 @@ class VibeLogger:
         self._logs_lock = threading.Lock()
         
         if self.log_file and self.config.create_dirs:
-            Path(self.log_file).parent.mkdir(parents=True, exist_ok=True)
+            try:
+                Path(self.log_file).parent.mkdir(parents=True, exist_ok=True)
+            except (OSError, PermissionError) as e:
+                # If we can't create directories, log to memory only
+                # This handles: disk full, read-only filesystem, permission denied, etc.
+                self.auto_save = False
     
     def _get_caller_info(self) -> str:
         """Get caller information by finding the first frame outside this logger file."""

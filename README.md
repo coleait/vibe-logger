@@ -156,10 +156,10 @@ The logger creates structured data that LLMs can immediately understand:
 
 ## 📁 Log File Organization
 
-Logs are automatically organized with timestamps:
+Logs are automatically organized with timestamps in your project folder:
 
 ```
-~/.vibe_logs/
+./logs/
 ├── my_project/
 │   ├── vibe_20250707_143052.log
 │   ├── vibe_20250707_151230.log

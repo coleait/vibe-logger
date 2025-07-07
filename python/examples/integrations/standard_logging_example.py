@@ -427,4 +427,4 @@ if __name__ == "__main__":
     example_performance_monitoring()
     
     print("All integration examples completed!")
-    print("Check the generated log files in ~/.vibe_logs/ for detailed output.")
+    print("Check the generated log files in ./logs/ for detailed output.")

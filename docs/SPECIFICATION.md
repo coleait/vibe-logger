@@ -171,7 +171,7 @@ All implementations should support:
 ### File Naming
 - Pattern: `vibe_YYYYMMDD_HHMMSS.log`
 - Example: `vibe_20250707_143052.log`
-- Location: `~/.vibe_logs/{project_name}/` by default
+- Location: `./logs/{project_name}/` by default
 
 ### File Content
 - Format: One JSON object per line (JSONL)

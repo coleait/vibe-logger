@@ -98,7 +98,7 @@ export class VibeLogger {
       const match = callerLine.match(/at\s+(.+)\s+\((.+):(\d+):(\d+)\)/);
       if (match) {
         const [, functionName, filePath, lineNumber] = match;
-        const fileName = filePath.split('/').pop() || filePath;
+        const fileName = filePath?.split('/').pop() || filePath || 'unknown';
         return `${fileName}:${lineNumber} in ${functionName}()`;
       }
 

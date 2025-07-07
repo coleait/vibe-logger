@@ -109,7 +109,7 @@ export class VibeLoggerConfigManager {
 
   /**
    * Generate default log file path with timestamp
-   * Matches Python convention: ~/.vibe_logs/vibe_YYYYMMDD_HHMMSS.log
+   * Uses project folder for better Claude Code access: ./logs/vibe_YYYYMMDD_HHMMSS.log
    */
   private generateDefaultLogFile(): string {
     const timestamp = new Date().toISOString()
@@ -117,7 +117,7 @@ export class VibeLoggerConfigManager {
       .replace('T', '_')
       .split('.')[0]; // Remove milliseconds and timezone
 
-    const logDir = resolve(homedir(), '.vibe_logs');
+    const logDir = resolve('./logs');
     return join(logDir, `vibe_${timestamp}.log`);
   }
 
@@ -130,7 +130,7 @@ export class VibeLoggerConfigManager {
       .replace('T', '_')
       .split('.')[0];
 
-    const logDir = resolve(homedir(), '.vibe_logs', projectName);
+    const logDir = resolve('./logs', projectName);
     const logFile = join(logDir, `vibe_${timestamp}.log`);
 
     return new VibeLoggerConfigManager({

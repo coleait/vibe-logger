@@ -29,7 +29,8 @@ class VibeLoggerConfig:
     @classmethod
     def default_file_config(cls, project_name: str = "vibe_project"):
         from datetime import datetime
-        log_dir = Path.home() / ".vibe_logs" / project_name
+        # Use project folder instead of home directory for better Claude Code access
+        log_dir = Path("./logs") / project_name
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = log_dir / f"vibe_{timestamp}.log"
         

@@ -71,7 +71,7 @@ export class EnvironmentCollector {
       }
 
       // Check for browser
-      if (typeof window !== 'undefined') {
+      if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
         return 'browser';
       }
 
@@ -112,10 +112,11 @@ export class EnvironmentCollector {
       }
 
       // Browser specific information
-      if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-        info.user_agent = navigator.userAgent;
-        info.browser_language = navigator.language;
-        info.browser_platform = navigator.platform;
+      if (typeof globalThis !== 'undefined' && 'window' in globalThis && 'navigator' in globalThis) {
+        const navigator = (globalThis as any).navigator;
+        info.user_agent = navigator?.userAgent;
+        info.browser_language = navigator?.language;
+        info.browser_platform = navigator?.platform;
       }
 
       // Deno specific information

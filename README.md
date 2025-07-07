@@ -47,6 +47,9 @@ pip install git/fladdict/vibe-logger.git
 
 ## How to Use
 
+### VIBE Usage
+Simpley Ask CLAUDE code or Gamini CLI to use this library.
+
 ### Basic Usage
 Getting started is simple. Use the create_file_logger helper to create a logger that automatically saves to a timestamped file in ./logs.
 

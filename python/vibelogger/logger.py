@@ -170,13 +170,21 @@ class VibeLogger:
             Path(self.log_file).parent.mkdir(parents=True, exist_ok=True)
     
     def _get_caller_info(self) -> str:
+        """Get caller information by finding the first frame outside this logger file."""
+        logger_filename = inspect.getsourcefile(self.__class__)
         frame = inspect.currentframe()
         try:
-            caller_frame = frame.f_back.f_back
-            filename = caller_frame.f_code.co_filename
-            line_number = caller_frame.f_lineno
-            function_name = caller_frame.f_code.co_name
-            return f"{filename}:{line_number} in {function_name}()"
+            current_frame = frame
+            while current_frame:
+                if current_frame.f_code.co_filename != logger_filename:
+                    filename = current_frame.f_code.co_filename
+                    line_number = current_frame.f_lineno
+                    function_name = current_frame.f_code.co_name
+                    # Get just the filename, not the full path
+                    short_filename = filename.split('/')[-1] if '/' in filename else filename.split('\\')[-1]
+                    return f"{short_filename}:{line_number} in {function_name}()"
+                current_frame = current_frame.f_back
+            return "Unknown source"
         finally:
             del frame
     
@@ -204,6 +212,18 @@ class VibeLogger:
             ai_todo=ai_todo
         )
     
+    def _process_entry(self, entry: LogEntry) -> None:
+        """Process log entry: add to memory and save to file based on configuration."""
+        with self._logs_lock:
+            if getattr(self.config, 'keep_logs_in_memory', True):
+                self.logs.append(entry)
+                max_logs = getattr(self.config, 'max_memory_logs', 1000)
+                if len(self.logs) > max_logs:
+                    self.logs.pop(0)
+        
+        if self.auto_save and self.log_file:
+            self._save_to_file(entry)
+    
     def log(
         self,
         level: LogLevel,
@@ -223,16 +243,7 @@ class VibeLogger:
             include_stack=level in [LogLevel.ERROR, LogLevel.CRITICAL]
         )
         
-        with self._logs_lock:
-            if getattr(self.config, 'keep_logs_in_memory', True):
-                self.logs.append(entry)
-                max_logs = getattr(self.config, 'max_memory_logs', 1000)
-                if len(self.logs) > max_logs:
-                    self.logs.pop(0)
-        
-        if self.auto_save and self.log_file:
-            self._save_to_file(entry)
-        
+        self._process_entry(entry)
         return entry
     
     def debug(self, operation: str, message: str, **kwargs) -> LogEntry:
@@ -272,16 +283,7 @@ class VibeLogger:
             ai_todo=ai_todo
         )
         
-        with self._logs_lock:
-            if getattr(self.config, 'keep_logs_in_memory', True):
-                self.logs.append(entry)
-                max_logs = getattr(self.config, 'max_memory_logs', 1000)
-                if len(self.logs) > max_logs:
-                    self.logs.pop(0)
-        
-        if self.auto_save and self.log_file:
-            self._save_to_file(entry)
-        
+        self._process_entry(entry)
         return entry
     
     def get_logs_json(self) -> str:
@@ -328,21 +330,59 @@ class VibeLogger:
                 f.write(log.to_json() + '\n')
     
     def load_logs_from_file(self, file_path: str):
+        """Load logs from file with robust error handling for corrupted data."""
         if not Path(file_path).exists():
             return
         
+        loaded_count = 0
+        error_count = 0
+        
         with open(file_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                if line.strip():
-                    try:
-                        log_data = json.loads(line)
-                        env_data = log_data.pop('environment')
-                        env = EnvironmentInfo(**env_data)
-                        log_data['environment'] = env
-                        entry = LogEntry(**log_data)
-                        self.logs.append(entry)
-                    except Exception as e:
-                        print(f"Failed to parse log line: {e}")
+            for line_num, line in enumerate(f, 1):
+                if not line.strip():
+                    continue
+                    
+                try:
+                    log_data = json.loads(line)
+                    
+                    # Use get() for safe dictionary access with defaults
+                    env_data = log_data.get('environment', {})
+                    if env_data:
+                        try:
+                            env = EnvironmentInfo(**env_data)
+                            log_data['environment'] = env
+                        except TypeError as e:
+                            print(f"Warning: Invalid environment data on line {line_num}, using defaults: {e}")
+                            log_data['environment'] = EnvironmentInfo.collect()
+                    else:
+                        log_data['environment'] = EnvironmentInfo.collect()
+                    
+                    # Validate required fields
+                    required_fields = ['timestamp', 'level', 'correlation_id', 'operation', 'message']
+                    missing_fields = [field for field in required_fields if field not in log_data]
+                    if missing_fields:
+                        print(f"Warning: Missing required fields on line {line_num}: {missing_fields}, skipping entry")
+                        error_count += 1
+                        continue
+                    
+                    entry = LogEntry(**log_data)
+                    self.logs.append(entry)
+                    loaded_count += 1
+                    
+                except json.JSONDecodeError as e:
+                    print(f"Warning: Skipping corrupted JSON on line {line_num}: {e}")
+                    error_count += 1
+                except TypeError as e:
+                    print(f"Warning: Failed to create LogEntry on line {line_num} due to missing/invalid fields: {e}")
+                    error_count += 1
+                except Exception as e:
+                    print(f"Warning: Unexpected error parsing line {line_num}: {e}")
+                    error_count += 1
+        
+        if error_count > 0:
+            print(f"Loaded {loaded_count} log entries with {error_count} errors from {file_path}")
+        else:
+            print(f"Successfully loaded {loaded_count} log entries from {file_path}")
     
     def clear_logs(self):
         with self._logs_lock:

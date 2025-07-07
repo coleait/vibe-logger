@@ -1,0 +1,10 @@
+include README.md
+include LICENSE
+include pyproject.toml
+recursive-include vibelogger *.py
+recursive-include tests *.py
+recursive-include examples *.py
+exclude tests/test_*
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .DS_Store

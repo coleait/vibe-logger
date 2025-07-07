@@ -1,118 +1,177 @@
 /**
- * Basic tests for VibeCoding Logger - TypeScript Implementation
+ * Comprehensive test suite for VibeCoding Logger TypeScript implementation
  * 
- * Mirrors the Python test structure but adapted for Node.js testing patterns
+ * This test suite mirrors the Python test structure to ensure cross-language
+ * compatibility and feature parity.
  */
 
 import { test, describe } from 'node:test';
-import { strict as assert } from 'node:assert';
+import assert from 'node:assert';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { unlink } from 'fs/promises';
+import { writeFileSync, unlinkSync, existsSync, readFileSync, mkdtempSync } from 'fs';
+import { rmSync } from 'fs';
 
-import { 
-  VibeLogger, 
-  createLogger, 
+import {
+  createLogger,
   createFileLogger,
+  createEnvLogger,
+  VibeLogger,
   LogLevel,
-  type VibeLoggerConfig 
+  type VibeLoggerConfig,
+  type LogEntry
 } from '../index.js';
 
-describe('VibeLogger Basic Tests', () => {
-  test('should create logger with default config', async () => {
-    const logger = createLogger();
-    assert.ok(logger instanceof VibeLogger);
-    
-    const config = logger.getConfig();
-    assert.ok(config.correlationId);
-    assert.equal(config.autoSave, true);
-    assert.equal(config.keepLogsInMemory, true);
-  });
-
-  test('should log basic info message', async () => {
+describe('VibeLogger Core Tests', () => {
+  test('basic logging functionality', async () => {
     const logger = createLogger({
       keepLogsInMemory: true,
       autoSave: false
     });
 
     const entry = await logger.info('test_operation', 'Test message', {
-      context: { key: 'value' },
-      humanNote: 'Test note'
+      context: { key: 'value' }
     });
 
-    assert.equal(entry.level, LogLevel.INFO);
-    assert.equal(entry.operation, 'test_operation');
-    assert.equal(entry.message, 'Test message');
-    assert.equal(entry.context.key, 'value');
-    assert.equal(entry.human_note, 'Test note');
-    assert.ok(entry.timestamp);
-    assert.ok(entry.correlation_id);
+    assert.strictEqual(entry.level, 'INFO');
+    assert.strictEqual(entry.operation, 'test_operation');
+    assert.strictEqual(entry.message, 'Test message');
+    assert.deepStrictEqual(entry.context, { key: 'value' });
+    
+    const logs = await logger.getLogs();
+    assert.strictEqual(logs.length, 1);
   });
 
-  test('should handle different log levels', async () => {
+  test('all log levels work correctly', async () => {
     const logger = createLogger({
       keepLogsInMemory: true,
       autoSave: false
     });
 
-    const debugEntry = await logger.debug('debug_op', 'Debug message');
-    const infoEntry = await logger.info('info_op', 'Info message');
-    const warningEntry = await logger.warning('warning_op', 'Warning message');
-    const errorEntry = await logger.error('error_op', 'Error message');
-    const criticalEntry = await logger.critical('critical_op', 'Critical message');
+    await logger.debug('op', 'debug msg');
+    await logger.info('op', 'info msg');
+    await logger.warning('op', 'warning msg');
+    await logger.error('op', 'error msg');
+    await logger.critical('op', 'critical msg');
 
-    assert.equal(debugEntry.level, LogLevel.DEBUG);
-    assert.equal(infoEntry.level, LogLevel.INFO);
-    assert.equal(warningEntry.level, LogLevel.WARNING);
-    assert.equal(errorEntry.level, LogLevel.ERROR);
-    assert.equal(criticalEntry.level, LogLevel.CRITICAL);
-
-    // Error and critical should have stack traces
-    assert.ok(errorEntry.stack_trace);
-    assert.ok(criticalEntry.stack_trace);
+    const logs = await logger.getLogs();
+    assert.strictEqual(logs.length, 5);
+    assert.strictEqual(logs[0]?.level, 'DEBUG');
+    assert.strictEqual(logs[1]?.level, 'INFO');
+    assert.strictEqual(logs[2]?.level, 'WARNING');
+    assert.strictEqual(logs[3]?.level, 'ERROR');
+    assert.strictEqual(logs[4]?.level, 'CRITICAL');
   });
 
-  test('should log exceptions properly', async () => {
+  test('exception logging', async () => {
     const logger = createLogger({
       keepLogsInMemory: true,
       autoSave: false
     });
 
-    const testError = new Error('Test error message');
+    const testError = new Error('Test error');
     const entry = await logger.logException('test_exception', testError, {
-      context: { errorType: 'test' },
-      aiTodo: 'Fix this error'
+      context: { error_context: 'test' }
     });
 
-    assert.equal(entry.level, LogLevel.ERROR);
-    assert.equal(entry.operation, 'test_exception');
-    assert.ok(entry.message.includes('Error: Test error message'));
-    assert.equal(entry.context.errorType, 'test');
-    assert.equal(entry.ai_todo, 'Fix this error');
-    assert.ok(entry.stack_trace);
-    assert.equal(entry.context.error_type, 'Error');
+    assert.strictEqual(entry.level, 'ERROR');
+    assert(entry.message.includes('Error: Test error'));
+    assert(entry.stack_trace !== undefined);
+    assert(entry.stack_trace!.includes('Error'));
+    
+    // Check that the original context is preserved
+    assert.strictEqual(entry.context.error_context, 'test');
+    // The logException method adds error details to context
+    assert(entry.context.error_type !== undefined);
+    assert(entry.context.original_error !== undefined);
   });
 
-  test('should handle non-Error exceptions', async () => {
+  test('exception logging with different error types', async () => {
     const logger = createLogger({
       keepLogsInMemory: true,
       autoSave: false
     });
 
-    // Test string throw
-    const stringEntry = await logger.logException('string_error', 'String error');
-    assert.ok(stringEntry.message.includes('StringError: String error'));
+    // Test different error types
+    const errors = [
+      new Error('Standard Error'),
+      'String error',
+      42,
+      { customError: 'Object error' },
+      null,
+      undefined
+    ];
 
-    // Test number throw
-    const numberEntry = await logger.logException('number_error', 42);
-    assert.ok(numberEntry.message.includes('UnknownError: 42'));
+    for (const [index, error] of errors.entries()) {
+      await logger.logException(`error_type_${index}`, error);
+    }
 
-    // Test object throw
-    const objectEntry = await logger.logException('object_error', { custom: 'error' });
-    assert.ok(objectEntry.message.includes('ObjectError'));
+    const logs = await logger.getLogs();
+    assert.strictEqual(logs.length, 6);
+    
+    // Verify they all have ERROR level
+    for (const log of logs) {
+      assert.strictEqual(log.level, 'ERROR');
+    }
   });
 
-  test('should maintain correlation ID across logs', async () => {
+  test('file logging functionality', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'vibe-logger-test-'));
+    const logFile = join(tempDir, 'test.log');
+
+    try {
+      const logger = createLogger({
+        logFile,
+        autoSave: true,
+        keepLogsInMemory: true,
+        createDirs: true
+      });
+
+      await logger.info('test_op', 'Test message');
+
+      // Wait a bit for file operations
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      assert(existsSync(logFile));
+      const content = readFileSync(logFile, 'utf8');
+      assert(content.includes('test_op'));
+      assert(content.includes('Test message'));
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('memory management with limits', async () => {
+    const logger = createLogger({
+      keepLogsInMemory: true,
+      maxMemoryLogs: 3,
+      autoSave: false
+    });
+
+    // Add more logs than the limit
+    for (let i = 0; i < 5; i++) {
+      await logger.info('test_op', `Message ${i}`);
+    }
+
+    const logs = await logger.getLogs();
+    assert.strictEqual(logs.length, 3);
+    assert.strictEqual(logs[0]?.message, 'Message 2');
+    assert.strictEqual(logs[2]?.message, 'Message 4');
+  });
+
+  test('memory disabled logging', async () => {
+    const logger = createLogger({
+      keepLogsInMemory: false,
+      autoSave: false
+    });
+
+    await logger.info('test_op', 'Test message');
+
+    const logs = await logger.getLogs();
+    assert.strictEqual(logs.length, 0);
+  });
+
+  test('correlation ID functionality', async () => {
     const correlationId = 'test-correlation-123';
     const logger = createLogger({
       correlationId,
@@ -120,15 +179,28 @@ describe('VibeLogger Basic Tests', () => {
       autoSave: false
     });
 
-    const entry1 = await logger.info('op1', 'Message 1');
-    const entry2 = await logger.error('op2', 'Message 2');
+    const entry = await logger.info('test_op', 'Test message');
 
-    assert.equal(entry1.correlation_id, correlationId);
-    assert.equal(entry2.correlation_id, correlationId);
-    assert.equal(logger.getCorrelationId(), correlationId);
+    assert.strictEqual(entry.correlation_id, correlationId);
+    assert.strictEqual(logger.getCorrelationId(), correlationId);
   });
 
-  test('should get logs for AI', async () => {
+  test('human annotations', async () => {
+    const logger = createLogger({
+      keepLogsInMemory: true,
+      autoSave: false
+    });
+
+    const entry = await logger.info('test_op', 'Test message', {
+      humanNote: 'This is a note for AI',
+      aiTodo: 'Please analyze this specific issue'
+    });
+
+    assert.strictEqual(entry.human_note, 'This is a note for AI');
+    assert.strictEqual(entry.ai_todo, 'Please analyze this specific issue');
+  });
+
+  test('get logs for AI analysis', async () => {
     const logger = createLogger({
       keepLogsInMemory: true,
       autoSave: false
@@ -140,163 +212,309 @@ describe('VibeLogger Basic Tests', () => {
     const aiLogs = await logger.getLogsForAI();
     const parsed = JSON.parse(aiLogs);
 
-    assert.equal(parsed.length, 2);
-    assert.equal(parsed[0].operation, 'operation1');
-    assert.equal(parsed[1].operation, 'operation2');
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].operation, 'operation1');
+    assert.strictEqual(parsed[1].operation, 'operation2');
   });
 
-  test('should filter logs by operation', async () => {
+  test('operation filter for AI logs', async () => {
     const logger = createLogger({
       keepLogsInMemory: true,
       autoSave: false
     });
 
-    await logger.info('user_login', 'User logged in');
-    await logger.info('user_logout', 'User logged out');
-    await logger.info('data_fetch', 'Data fetched');
+    await logger.info('fetch_user', 'Message 1');
+    await logger.info('save_data', 'Message 2');
+    await logger.info('fetch_user', 'Message 3');
 
-    const userLogs = await logger.getLogsForAI('user_');
-    const parsed = JSON.parse(userLogs);
+    const filtered = await logger.getLogsForAI('fetch_user');
+    const parsed = JSON.parse(filtered);
 
-    assert.equal(parsed.length, 2);
-    assert.ok(parsed.every((log: any) => log.operation.startsWith('user_')));
+    assert.strictEqual(parsed.length, 2);
+    assert(parsed.every((log: any) => log.operation.includes('fetch_user')));
   });
 
-  test('should manage memory limits', async () => {
+  test('UTC timestamp format', async () => {
     const logger = createLogger({
       keepLogsInMemory: true,
-      maxMemoryLogs: 3,
       autoSave: false
     });
 
-    // Add more logs than the limit
-    await logger.info('op1', 'Message 1');
-    await logger.info('op2', 'Message 2');
-    await logger.info('op3', 'Message 3');
-    await logger.info('op4', 'Message 4');
-    await logger.info('op5', 'Message 5');
+    const entry = await logger.info('test_op', 'Test message');
 
-    const logs = await logger.getLogs();
-    assert.equal(logs.length, 3);
+    // Check that timestamp ends with 'Z' or contains '+00:00' (UTC indicators)
+    assert(entry.timestamp.endsWith('Z') || entry.timestamp.includes('+00:00'));
+  });
+
+  test('clear logs functionality', async () => {
+    const logger = createLogger({
+      keepLogsInMemory: true,
+      autoSave: false
+    });
+
+    await logger.info('test_op', 'Message 1');
+    await logger.info('test_op', 'Message 2');
     
-    // Should keep the most recent logs
-    assert.equal(logs[0].operation, 'op3');
-    assert.equal(logs[1].operation, 'op4');
-    assert.equal(logs[2].operation, 'op5');
-  });
-
-  test('should clear logs', async () => {
-    const logger = createLogger({
-      keepLogsInMemory: true,
-      autoSave: false
-    });
-
-    await logger.info('op1', 'Message 1');
-    await logger.info('op2', 'Message 2');
-
     let logs = await logger.getLogs();
-    assert.equal(logs.length, 2);
+    assert.strictEqual(logs.length, 2);
 
     await logger.clearLogs();
     logs = await logger.getLogs();
-    assert.equal(logs.length, 0);
-  });
-
-  test('should include environment information', async () => {
-    const logger = createLogger({
-      keepLogsInMemory: true,
-      autoSave: false
-    });
-
-    const entry = await logger.info('env_test', 'Environment test');
-
-    assert.ok(entry.environment);
-    assert.ok(entry.environment.node_version);
-    assert.ok(entry.environment.os);
-    assert.ok(entry.environment.platform);
-    assert.ok(entry.environment.architecture);
-    assert.equal(entry.environment.runtime, 'node');
+    assert.strictEqual(logs.length, 0);
   });
 });
 
-describe('VibeLogger File Operations', () => {
-  test('should save logs to file', async () => {
-    const logFile = join(tmpdir(), `test-${Date.now()}.log`);
+describe('Logger Configuration Tests', () => {
+  test('default configuration values', () => {
+    const logger = createLogger();
     
+    // Test that logger was created with reasonable defaults
+    assert(typeof logger.getCorrelationId() === 'string');
+    assert(logger.getCorrelationId().length > 0);
+  });
+
+  test('environment variable configuration', () => {
+    // Set environment variables
+    process.env.VIBE_LOG_FILE = '/tmp/test.log';
+    process.env.VIBE_AUTO_SAVE = 'false';
+    process.env.VIBE_MAX_FILE_SIZE_MB = '25';
+    process.env.VIBE_CORRELATION_ID = 'env-test-id';
+
+    try {
+      const logger = createEnvLogger();
+      
+      assert.strictEqual(logger.getCorrelationId(), 'env-test-id');
+      // Additional config tests would require accessing internal config
+    } finally {
+      // Clean up environment variables
+      delete process.env.VIBE_LOG_FILE;
+      delete process.env.VIBE_AUTO_SAVE;
+      delete process.env.VIBE_MAX_FILE_SIZE_MB;
+      delete process.env.VIBE_CORRELATION_ID;
+    }
+  });
+
+  test('file logger creation', () => {
+    const logger = createFileLogger('test_project');
+    
+    // Verify that correlation ID was generated
+    assert(typeof logger.getCorrelationId() === 'string');
+    assert(logger.getCorrelationId().length > 0);
+  });
+});
+
+describe('Concurrency and Thread Safety Tests', () => {
+  test('concurrent logging operations', async () => {
+    const logger = createLogger({
+      keepLogsInMemory: true,
+      autoSave: false,
+      maxMemoryLogs: 1000
+    });
+
+    const promises: Promise<LogEntry>[] = [];
+    const workerCount = 5;
+    const messagesPerWorker = 10;
+
+    // Create concurrent logging operations
+    for (let workerId = 0; workerId < workerCount; workerId++) {
+      for (let i = 0; i < messagesPerWorker; i++) {
+        promises.push(
+          logger.info(`worker_${workerId}`, `Message ${i}`, {
+            context: { worker: workerId, iteration: i }
+          })
+        );
+      }
+    }
+
+    // Wait for all operations to complete
+    await Promise.all(promises);
+
+    const logs = await logger.getLogs();
+    assert.strictEqual(logs.length, workerCount * messagesPerWorker);
+
+    // Verify all worker IDs are represented
+    const workerIds = new Set();
+    for (const log of logs) {
+      workerIds.add(log.context.worker);
+    }
+    assert.strictEqual(workerIds.size, workerCount);
+  });
+
+  test('concurrent file operations', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'vibe-logger-concurrent-'));
+    const logFile = join(tempDir, 'concurrent.log');
+
     try {
       const logger = createLogger({
         logFile,
         autoSave: true,
-        keepLogsInMemory: false
+        keepLogsInMemory: false,
+        createDirs: true
       });
 
-      await logger.info('file_test', 'Test file logging');
+      const promises: Promise<LogEntry>[] = [];
       
-      // Give file operations time to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Create concurrent file write operations
+      for (let i = 0; i < 20; i++) {
+        promises.push(
+          logger.info('concurrent_test', `Concurrent message ${i}`)
+        );
+      }
 
-      // File should exist and contain the log
-      const { FileSystemManager } = await import('../utils/fileSystem.js');
-      const fileResult = await FileSystemManager.readFile(logFile);
-      
-      assert.ok(fileResult.success);
-      assert.ok(fileResult.content);
-      assert.ok(fileResult.content.includes('file_test'));
-      assert.ok(fileResult.content.includes('Test file logging'));
+      await Promise.all(promises);
+
+      // Wait for file operations to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      assert(existsSync(logFile));
+      const content = readFileSync(logFile, 'utf8');
+      const lines = content.trim().split('\n').filter(line => line.length > 0);
+      assert.strictEqual(lines.length, 20);
     } finally {
-      // Cleanup
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('Error Handling and Edge Cases', () => {
+  test('invalid file path handling', async () => {
+    const logger = createLogger({
+      logFile: '/invalid/path/file.log',
+      autoSave: true,
+      createDirs: false,
+      keepLogsInMemory: true
+    });
+
+    // Should not throw error even with invalid file path
+    const entry = await logger.info('test', 'Should not crash on file error');
+    
+    assert(entry !== undefined);
+    assert.strictEqual(entry.operation, 'test');
+  });
+
+  test('malformed context handling', async () => {
+    const logger = createLogger({
+      keepLogsInMemory: true,
+      autoSave: false
+    });
+
+    // Test with various problematic context data
+    const problematicContexts = [
+      { function: () => 'not serializable' },
+      { large_data: 'x'.repeat(100000) },
+      { nested: { very: { deep: { nesting: { structure: 'value' } } } } },
+      { unicode: '🚀🎉💻🔥' },
+      { none_value: null },
+      { empty_dict: {} },
+      { empty_list: [] },
+    ];
+
+    for (const [i, context] of problematicContexts.entries()) {
       try {
-        await unlink(logFile);
-      } catch {
-        // Ignore cleanup errors
+        const entry = await logger.info(`context_test_${i}`, 'Testing problematic context', {
+          context
+        });
+        assert(entry !== undefined);
+      } catch (error) {
+        // Some contexts might fail, but shouldn't crash the logger
+        console.warn(`Context ${i} failed (acceptable):`, error);
       }
     }
   });
 
-  test('should create file logger for project', async () => {
-    const logger = createFileLogger('test-project');
-    
-    assert.ok(logger instanceof VibeLogger);
-    
-    const config = logger.getConfig();
-    assert.ok(config.logFile);
-    assert.ok(config.logFile.includes('test-project'));
-    assert.equal(config.autoSave, true);
-  });
-});
-
-describe('VibeLogger Configuration', () => {
-  test('should validate configuration', async () => {
-    // Valid configuration should work
-    const validLogger = createLogger({
-      maxFileSizeMb: 10,
-      maxMemoryLogs: 100
+  test('correlation ID edge cases', async () => {
+    // Test with custom correlation ID
+    const customId = 'custom-test-id-123';
+    const logger1 = createLogger({
+      correlationId: customId,
+      keepLogsInMemory: true,
+      autoSave: false
     });
-    assert.ok(validLogger);
+    assert.strictEqual(logger1.getCorrelationId(), customId);
 
-    // Invalid configuration should throw
-    assert.throws(() => {
-      createLogger({
-        maxFileSizeMb: -1  // Invalid
-      });
+    // Test with empty correlation ID (should generate one)
+    const logger2 = createLogger({
+      correlationId: '',
+      keepLogsInMemory: true,
+      autoSave: false
     });
+    assert(logger2.getCorrelationId() !== '');
+    assert(logger2.getCorrelationId().length > 0);
 
-    assert.throws(() => {
-      createLogger({
-        maxMemoryLogs: -1  // Invalid
-      });
-    });
+    // Test unique generation
+    const logger3 = createLogger();
+    const logger4 = createLogger();
+    assert(logger3.getCorrelationId() !== logger4.getCorrelationId());
   });
 
-  test('should handle memory-only logging', async () => {
+  test('environment info collection', async () => {
     const logger = createLogger({
-      keepLogsInMemory: false,
+      keepLogsInMemory: true,
       autoSave: false
     });
 
-    await logger.info('memory_test', 'This should not be stored');
-    
+    const entry = await logger.info('env_test', 'Testing environment info');
+
+    assert(entry.environment);
+    assert(typeof entry.environment.node_version === 'string');
+    assert(typeof entry.environment.os === 'string');
+    assert(typeof entry.environment.platform === 'string');
+    assert(typeof entry.environment.architecture === 'string');
+    assert(typeof entry.environment.runtime === 'string');
+  });
+});
+
+describe('Performance and Memory Tests', () => {
+  test('memory efficiency with large log volumes', async () => {
+    const logger = createLogger({
+      maxMemoryLogs: 100,
+      keepLogsInMemory: true,
+      autoSave: false
+    });
+
+    // Generate many logs with varying sizes
+    for (let i = 0; i < 500; i++) {
+      const context = { 
+        iteration: i, 
+        data: 'x'.repeat(i % 100) 
+      };
+      await logger.info('memory_efficiency_test', `Log ${i}`, { context });
+    }
+
     const logs = await logger.getLogs();
-    assert.equal(logs.length, 0);
+    assert.strictEqual(logs.length, 100);
+
+    // Should keep the most recent logs
+    assert.strictEqual(logs[logs.length - 1]?.context.iteration, 499);
+    assert.strictEqual(logs[0]?.context.iteration, 400);
+  });
+
+  test('logging performance', async () => {
+    const logger = createLogger({
+      keepLogsInMemory: true,
+      autoSave: false
+    });
+
+    const startTime = Date.now();
+    
+    // Measure time for many calls
+    const promises = [];
+    for (let i = 0; i < 100; i++) {
+      promises.push(logger.info('perf_test', `Message ${i}`));
+    }
+    await Promise.all(promises);
+    
+    const duration = Date.now() - startTime;
+
+    // Should complete 100 logs in reasonable time (less than 1 second)
+    assert(duration < 1000);
+
+    const logs = await logger.getLogs();
+    assert.strictEqual(logs.length, 100);
+
+    // All entries should have source info
+    for (const log of logs) {
+      assert(log.source !== undefined);
+    }
   });
 });

@@ -1,0 +1,64 @@
+{
+  "name": "vibe-logger",
+  "version": "0.1.0",
+  "description": "AI-Native Logging for LLM Agent Development - TypeScript/Node.js Implementation",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node --test dist/tests/**/*.test.js",
+    "test:watch": "node --test --watch dist/tests/**/*.test.js",
+    "clean": "rm -rf dist",
+    "prepare": "npm run build",
+    "lint": "tsc --noEmit",
+    "format": "prettier --write 'src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts'"
+  },
+  "keywords": [
+    "logging",
+    "ai",
+    "llm",
+    "vibe-coding",
+    "debugging",
+    "json-logging",
+    "structured-logging",
+    "correlation-tracking",
+    "typescript",
+    "nodejs"
+  ],
+  "author": "VibeCoding Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fladdict/vibe-logger.git",
+    "directory": "typescript"
+  },
+  "bugs": {
+    "url": "https://github.com/fladdict/vibe-logger/issues"
+  },
+  "homepage": "https://github.com/fladdict/vibe-logger#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {},
+  "peerDependencies": {}
+}

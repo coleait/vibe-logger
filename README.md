@@ -44,7 +44,16 @@ npm install vibelogger
 ```
 
 ### Vibe Usage
-Just ask Claude Code or other AI assistants to use this library.
+Add this instruction to your project's CLAUDE.md file to enable AI-assisted debugging:
+
+```markdown
+### Project Logging
+* Use vibelogger library for all logging needs
+* vibelogger instruction: https://github.com/fladdict/vibe-logger/blob/main/README.md
+* Check ./logs/<project_name>/ folder for debugging data when issues occur
+```
+
+Then simply ask Claude Code or other AI assistants to implement logging in your code. When debugging is needed, instruct the AI to read the log files for context.
 
 ### Basic Usage
 
@@ -63,9 +72,8 @@ logger.info(
     human_note="AI-TODO: Check if user exists before fetching profile"
 )
 
-# Get logs formatted for AI analysis
-ai_context = logger.get_logs_for_ai()
-print(ai_context)  # Send this to your LLM for analysis
+# Logs are automatically saved to ./logs/my_project/ folder
+# AI can read these files when debugging is needed
 ```
 
 **TypeScript/Node.js:**
@@ -85,9 +93,8 @@ await logger.info(
     }
 );
 
-// Get logs formatted for AI analysis
-const aiContext = logger.getLogsForAI();
-console.log(aiContext); // Send this to your LLM for analysis
+// Logs are automatically saved to ./logs/my_project/ folder
+// AI can read these files when debugging is needed
 ```
 
 For complete documentation:
@@ -213,11 +220,11 @@ for t in threads:
 
 ## 🎯 VibeCoding Workflow
 
-1. **Code with VibeCoding Logger**: Add rich logging to your development process
-2. **Run Your Code**: Logger captures detailed context automatically
-3. **Get AI Analysis**: Use `logger.get_logs_for_ai()` to get formatted data
-4. **Send to LLM**: Paste the structured logs into your LLM for analysis
-5. **Get Precise Solutions**: LLM provides targeted fixes with full context
+1. **Setup VibeCoding Logger**: Add logging instructions to your CLAUDE.md file
+2. **Code with Rich Logging**: Ask AI to implement vibelogger in your code
+3. **Run Your Code**: Logger captures detailed context automatically
+4. **Debug with AI**: When issues occur, instruct AI to read the log files
+5. **Get Precise Solutions**: AI analyzes the structured logs and provides targeted fixes
 
 ## 📚 Documentation
 

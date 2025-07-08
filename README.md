@@ -45,6 +45,11 @@ npm install vibelogger
 
 ### Vibe Usage
 Just ask Claude Code or other AI assistants to use this library.
+```CLAUDE.md
+* use vibelogger library for logging
+* vibelogger instruction: https://github.com/fladdict/vibe-logger/edit/main/README.md
+* check <LOG_FOLDER_NAME_HERE> data for debugging.
+```
 
 ### Basic Usage
 
@@ -213,11 +218,9 @@ for t in threads:
 
 ## 🎯 VibeCoding Workflow
 
+0. **Add VibeLogger info and rules in your CLAUDE.md**:
 1. **Code with VibeCoding Logger**: Add rich logging to your development process
 2. **Run Your Code**: Logger captures detailed context automatically
-3. **Get AI Analysis**: Use `logger.get_logs_for_ai()` to get formatted data
-4. **Send to LLM**: Paste the structured logs into your LLM for analysis
-5. **Get Precise Solutions**: LLM provides targeted fixes with full context
 
 ## 📚 Documentation
 
